@@ -1,8 +1,8 @@
 local new_tracer = require "opentracing.tracer".new
-local zipkin_codec = require "kong.plugins.zipkin.codec"
-local new_random_sampler = require "kong.plugins.zipkin.random_sampler".new
-local new_zipkin_reporter = require "kong.plugins.zipkin.reporter".new
-local OpenTracingHandler = require "kong.plugins.zipkin.opentracing"
+local zipkin_codec = require "kong.plugins.zipkin-dc.codec"
+local new_random_sampler = require "kong.plugins.zipkin-dc.random_sampler".new
+local new_zipkin_reporter = require "kong.plugins.zipkin-dc.reporter".new
+local OpenTracingHandler = require "kong.plugins.zipkin-dc.opentracing"
 
 -- Zipkin plugin derives from general opentracing one
 local ZipkinLogHandler = OpenTracingHandler:extend()
