@@ -55,7 +55,7 @@ local function ip_tag(addr)
 end
 
 local function add_datadog_tag(span, tag_name, tag_value)
-	if span then
+	if span ~= nil then
 		span:set_tag("datadog." .. tag_name, tag_value)
 	end
 end
