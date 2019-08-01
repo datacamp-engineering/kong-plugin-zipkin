@@ -54,6 +54,21 @@ local function ip_tag(addr)
 	end
 end
 
+local function add_datadog_tag(span, tag_name, tag_value)
+	if span then
+		span:set_tag("datadog." .. tag_name, tag_value)
+	end
+end
+
+local function add_datadog_tag_to_spans(opentracing, tag_name, tag_value)
+	add_datadog_tag(opentracing.request_span, tag_name, tag_value)
+	add_datadog_tag(opentracing.rewrite_span, tag_name, tag_value)
+	add_datadog_tag(opentracing.access_span, tag_name, tag_value)
+	add_datadog_tag(opentracing.proxy_span, tag_name, tag_value)
+	add_datadog_tag(opentracing.header_filter_span, tag_name, tag_value)
+	add_datadog_tag(opentracing.body_filter_span, tag_name, tag_value)
+end
+
 if subsystem == "http" then
 	function OpenTracingHandler:initialise_request(conf, ctx)
 		local tracer = self:get_tracer(conf)
@@ -241,6 +256,12 @@ function OpenTracingHandler:log(conf)
 				span:set_tag("kong.balancer.state", try.state)
 				span:set_tag("kong.balancer.code", try.code)
 			end
+			if ctx.service and ctx.service.name ~= ngx.null then
+				add_datadog_tag(span, "service", ctx.service.name)
+			end
+			if ctx.route and ctx.route.id then
+				add_datadog_tag(span, "resource", ctx.route.id)
+			end
 			span:finish((try.balancer_start + try.balancer_latency) / 1000)
 		end
 		proxy_span:set_tag("peer.hostname", balancer_data.hostname) -- could be nil
@@ -280,6 +301,13 @@ function OpenTracingHandler:log(conf)
 	elseif ctx.api and ctx.api.id then
 		proxy_span:set_tag("kong.api", ctx.api.id)
 	end
+	if ctx.service and ctx.service.name ~= ngx.null then
+		add_datadog_tag_to_spans(opentracing, "service", "kong_" .. ctx.service.name)
+	end
+	if ctx.route and ctx.route.id then
+		add_datadog_tag_to_spans(opentracing, "resource", ctx.route.id)
+	end
+	
 	proxy_span:finish(proxy_end)
 	request_span:finish(now)
 end
