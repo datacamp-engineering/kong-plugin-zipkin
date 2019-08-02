@@ -64,8 +64,14 @@ local function add_datadog_tags(span, ctx)
 	if ctx.service and ctx.service.name then
 		add_datadog_tag(span, "service", "kong_" .. ctx.service.name)
 	end
-	if ctx.route and ctx.route.id then
-		add_datadog_tag(span, "resource", ctx.route.id)
+	if ctx.route and ctx.route.path then
+		local path = nil
+		if type(ctx.route.paths) == "table" then
+			path = table.concat(ctx.route.path, ",")
+		else
+			path = "/"
+		end
+		add_datadog_tag(span, "resource", path)
 	end
 end
 
@@ -271,7 +277,7 @@ function OpenTracingHandler:log(conf)
 	end
 
 	if not opentracing.header_filter_finished and opentracing.header_filter_span then
-		add_datadog_tags(opentracing.header_filter_finished, ctx)
+		add_datadog_tags(opentracing.header_filter_span, ctx)
 		opentracing.header_filter_span:finish(now)
 		opentracing.header_filter_finished = true
 	end
