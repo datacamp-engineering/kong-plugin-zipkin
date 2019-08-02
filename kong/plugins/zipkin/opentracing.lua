@@ -60,13 +60,13 @@ local function add_datadog_tag(span, tag_name, tag_value)
 	end
 end
 
-local function add_datadog_tag_to_spans(opentracing, tag_name, tag_value)
-	add_datadog_tag(opentracing.request_span, tag_name, tag_value)
-	add_datadog_tag(opentracing.rewrite_span, tag_name, tag_value)
-	add_datadog_tag(opentracing.access_span, tag_name, tag_value)
-	add_datadog_tag(opentracing.proxy_span, tag_name, tag_value)
-	add_datadog_tag(opentracing.header_filter_span, tag_name, tag_value)
-	add_datadog_tag(opentracing.body_filter_span, tag_name, tag_value)
+local function add_datadog_tags(span, ctx)
+	if ctx.service and ctx.service.name then
+		add_datadog_tag(span, "service", "kong_" .. ctx.service.name)
+	end
+	if ctx.route and ctx.route.id then
+		add_datadog_tag(span, "resource", ctx.route.id)
+	end
 end
 
 if subsystem == "http" then
@@ -162,7 +162,7 @@ if subsystem == "http" then
 		-- Finish header filter when body filter starts
 		if not opentracing.header_filter_finished then
 			local now = ngx.now()
-
+			add_datadog_tags(opentracing.header_filter_span, ctx)
 			opentracing.header_filter_span:finish(now)
 			opentracing.header_filter_finished = true
 
@@ -233,12 +233,16 @@ function OpenTracingHandler:log(conf)
 		opentracing.rewrite_span = opentracing.request_span:start_child_span(
 			"kong.rewrite",
 			ctx.KONG_REWRITE_START / 1000
-		):finish((ctx.KONG_REWRITE_START + ctx.KONG_REWRITE_TIME) / 1000)
+		)
+		add_datadog_tags(opentracing.rewrite_span, ctx)
+		opentracing.rewrite_span:finish((ctx.KONG_REWRITE_START + ctx.KONG_REWRITE_TIME) / 1000)
 	end
 
 	if opentracing.access_span then
+		add_datadog_tags(opentracing.access_span, ctx)
 		opentracing.access_span:finish(ctx.KONG_ACCESS_ENDED_AT and ctx.KONG_ACCESS_ENDED_AT/1000 or proxy_end)
 	elseif opentracing.preread_span then
+		add_datadog_tags(opentracing.preread_span, ctx)
 		opentracing.preread_span:finish(ctx.KONG_PREREAD_ENDED_AT and ctx.KONG_PREREAD_ENDED_AT/1000 or proxy_end)
 	end
 
@@ -256,12 +260,7 @@ function OpenTracingHandler:log(conf)
 				span:set_tag("kong.balancer.state", try.state)
 				span:set_tag("kong.balancer.code", try.code)
 			end
-			if ctx.service and ctx.service.name ~= ngx.null then
-				add_datadog_tag(span, "service", ctx.service.name)
-			end
-			if ctx.route and ctx.route.id then
-				add_datadog_tag(span, "resource", ctx.route.id)
-			end
+			add_datadog_tags(span, ctx)
 			span:finish((try.balancer_start + try.balancer_latency) / 1000)
 		end
 		proxy_span:set_tag("peer.hostname", balancer_data.hostname) -- could be nil
@@ -272,11 +271,13 @@ function OpenTracingHandler:log(conf)
 	end
 
 	if not opentracing.header_filter_finished and opentracing.header_filter_span then
+		add_datadog_tags(opentracing.header_filter_finished, ctx)
 		opentracing.header_filter_span:finish(now)
 		opentracing.header_filter_finished = true
 	end
 
 	if opentracing.body_filter_span then
+		add_datadog_tags(opentracing.body_filter_span, ctx)
 		opentracing.body_filter_span:finish(proxy_end)
 	end
 
@@ -308,6 +309,8 @@ function OpenTracingHandler:log(conf)
 		add_datadog_tag_to_spans(opentracing, "resource", ctx.route.id)
 	end
 	
+	add_datadog_tags(proxy_span, ctx)
+	add_datadog_tags(request_span, ctx)
 	proxy_span:finish(proxy_end)
 	request_span:finish(now)
 end
