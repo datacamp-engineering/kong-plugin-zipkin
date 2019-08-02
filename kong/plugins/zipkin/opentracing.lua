@@ -302,12 +302,6 @@ function OpenTracingHandler:log(conf)
 	elseif ctx.api and ctx.api.id then
 		proxy_span:set_tag("kong.api", ctx.api.id)
 	end
-	if ctx.service and ctx.service.name ~= ngx.null then
-		add_datadog_tag_to_spans(opentracing, "service", "kong_" .. ctx.service.name)
-	end
-	if ctx.route and ctx.route.id then
-		add_datadog_tag_to_spans(opentracing, "resource", ctx.route.id)
-	end
 	
 	add_datadog_tags(proxy_span, ctx)
 	add_datadog_tags(request_span, ctx)
