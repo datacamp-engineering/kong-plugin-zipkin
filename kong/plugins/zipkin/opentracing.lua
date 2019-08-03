@@ -64,10 +64,10 @@ local function add_datadog_tags(span, ctx)
 	if ctx.service and ctx.service.name then
 		add_datadog_tag(span, "service", "kong_" .. ctx.service.name)
 	end
-	if ctx.route and ctx.route.path then
+	if ctx.route and ctx.route.paths then
 		local path = nil
 		if type(ctx.route.paths) == "table" then
-			path = table.concat(ctx.route.path, ",")
+			path = table.concat(ctx.route.paths, ",")
 		else
 			path = "/"
 		end
