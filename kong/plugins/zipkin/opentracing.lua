@@ -301,15 +301,22 @@ function OpenTracingHandler:log(conf)
 		proxy_span:set_tag("kong.service", ctx.service.id)
 		if ctx.route and ctx.route.id then
 			proxy_span:set_tag("kong.route", ctx.route.id)
+			local path = nil
+			if ctx.route.paths and type(ctx.route.paths) == "table" then
+				path = table.concat(ctx.route.paths, ",")
+			else
+				path = "/"
+			end
+			add_datadog_tag(proxy_span, "resource", path)
 		end
 		if ctx.service.name ~= ngx.null then
 			proxy_span:set_tag("peer.service", ctx.service.name)
+			add_datadog_tag(proxy_span, "service", ctx.service.name)
 		end
 	elseif ctx.api and ctx.api.id then
 		proxy_span:set_tag("kong.api", ctx.api.id)
 	end
 	
-	add_datadog_tags(proxy_span, ctx)
 	add_datadog_tags(request_span, ctx)
 	proxy_span:finish(proxy_end)
 	request_span:finish(now)
