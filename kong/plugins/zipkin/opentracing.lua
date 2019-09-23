@@ -258,7 +258,6 @@ function OpenTracingHandler:log(conf)
 		for i=1, balancer_data.try_count do
 			local try = balancer_tries[i]
 			local span = proxy_span:start_child_span("kong.balancer", try.balancer_start / 1000)
-			span:set_tag(ip_tag(try.ip), try.ip)
 			span:set_tag("peer.port", try.port)
 			span:set_tag("kong.balancer.try", i)
 			if i < balancer_data.try_count then
